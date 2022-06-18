@@ -1,0 +1,69 @@
+<head>
+</head>
+<body>
+<h1 id=progress style='font-size:25px;text-align:center;text-shadow: 4px 4px 4px black;color:white;'>Status</h1>
+
+<button id="button-Payload" onMouseOver="progress.innerHTML='rdr2 menu'"; onmouseout="progress.innerHTML='Status'" type="button" onclick="rdroy()" style='font-size:20px;text-align:center;text-shadow: 4px 4px 4px black;color:#CEC52A' > rdr2</button>
+
+
+
+<script
+  src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
+  integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI="
+  crossorigin="anonymous"></script>
+<script>
+function load_poc(){
+ var req = new XMLHttpRequest();
+ req.responseType = "arraybuffer";
+ req.open('GET', PLfile);
+ req.send();
+ req.onreadystatechange = function () {
+  if (req.readyState == 4) {
+   PLD = req.response;
+   var payload_buffer = chain.syscall(477, 0, PLD.byteLength*4 , 7, 0x1002, -1, 0);
+   var pl = p.array_from_address(payload_buffer, PLD.byteLength*4);
+   var padding = new Uint8Array(4 - (req.response.byteLength % 4) % 4);
+   var tmp = new Uint8Array(req.response.byteLength + padding.byteLength);
+   tmp.set(new Uint8Array(req.response), 0);
+   tmp.set(padding, req.response.byteLength);
+   var shellcode = new Uint32Array(tmp.buffer);
+   pl.set(shellcode,0);
+   var pthread = p.malloc(0x10);
+   chain.call(libKernelBase.add32(OFFSET_lk_pthread_create), pthread, 0x0, payload_buffer, 0);
+   goldset();
+  }
+ };
+}
+function GetPL(){
+ var req=new XMLHttpRequest();req.open("GET","http://127.0.0.1:9090/status");req.send();
+ req.onerror=function(){alert("Cannot Load Payload Because The BinLoader Server Is Not Running");return;};
+ req.onload=function(){
+  var responseJson=JSON.parse(req.responseText);
+  if(responseJson.status=="ready"){
+   getPayload(PLfile,function(req){if((req.status===200||req.status===304)&&req.response){sendPayload("http://127.0.0.1:9090",req.response);}});
+  }
+  else{alert("Cannot Load Payload Because The BinLoader Server Is Busy");return;}
+ };
+ var getPayload=function(pl,onLoadEndCallback){
+  var req=new XMLHttpRequest();req.open('GET',pl);req.send();req.responseType="arraybuffer";
+  req.onload=function(event){if(onLoadEndCallback)onLoadEndCallback(req,event);};
+ };
+ var sendPayload=function(url,data,onLoadEndCallback){
+  var req=new XMLHttpRequest();req.open("POST",url,true);req.send(data);
+  req.onload=function(event){
+   allset();
+   if(onLoadEndCallback)onLoadEndCallback(req,event);
+  };
+ };
+}
+
+
+function rdroy(){
+    progress.innerHTML="oy rdr2 v1.3.6 on 1.29 loading... please wait";
+    PLfile = "OYRDR2_v1.3.6_1.29.bin";
+     GetPL();
+}
+
+
+</script>
+</body>
